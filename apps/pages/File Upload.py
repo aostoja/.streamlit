@@ -4,11 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import plotly.express as px
 
+st.set_page_config(page_icon=":bar_chart:",layout="wide")
+st.title('Streamlit Dashboard - Upload Dataset')
 st.sidebar.header('Parameters')
 
 def main():
-    st.title('Streamlit Dashboard - Upload Dataset')
-    st.markdown('<style>div.block-container{padding-top:1rem;}</style>', unsafe_allow_html=True)
+    #st.markdown('<style>div.block-container{padding-top:1rem;}</style>', unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader('Upload a file', type = (['csv', 'xlsx']))
 
@@ -95,6 +96,27 @@ def main():
         col1.metric(select_col_1 +' Mean Value', np.round(df[select_col_1].mean()))
         col2.metric(select_col_2 +' Maximum Value', df[select_col_2].max())
         col3.metric(select_col_3 +' Minimum Value', df[select_col_3].min())
+
+        with col1:
+            category_df_xaxis = st.selectbox('Select Category', df.columns)
+        with col2:
+            category_df_yaxis = st.selectbox('Select Quantity Column', df.columns)
+        with col3:
+            category_df_y2axis = st.selectbox('Select Region', df.columns)
+        category_df = filtered_df.groupby(by = [category_df_xaxis], as_index = False)[category_df_yaxis].sum()
+
+        cl1, cl2 = st.columns(2)
+        with cl1:
+            st.subheader(str(category_df_yaxis) + ' vs. ' + str(category_df_xaxis))
+            fig = px.bar(category_df, x = str(category_df_xaxis), y = str(category_df_yaxis), text = ['${:,.2f}'.format(x) for x in category_df[category_df_yaxis]],
+                 template = "seaborn")
+            st.plotly_chart(fig,use_container_width=True, height = 200)
+
+        with cl2:
+            st.subheader(str(category_df_y2axis) + ' Pie Chart')
+            fig = px.pie(filtered_df, values = str(category_df_yaxis), names = str(category_df_y2axis), hole = 0.5)
+            fig.update_traces(text = filtered_df[category_df_y2axis], textposition = "outside")
+            st.plotly_chart(fig,use_container_width=True)
 
         st.markdown("Column #1 Counts Bar Chart")
         st.bar_chart(df[select_col_1].value_counts())
