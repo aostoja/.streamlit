@@ -8,6 +8,70 @@ st.set_page_config(page_icon=":bar_chart:",layout="wide")
 st.title('Streamlit Dashboard - Upload Dataset')
 st.sidebar.header('Parameters')
 
+states_abbreviation = {
+    "Alabama": "AL",
+    "Alaska": "AK",
+    "Arizona": "AZ",
+    "Arkansas": "AR",
+    "California": "CA",
+    "Colorado": "CO",
+    "Connecticut": "CT",
+    "Delaware": "DE",
+    "Florida": "FL",
+    "Georgia": "GA",
+    "Hawaii": "HI",
+    "Idaho": "ID",
+    "Illinois": "IL",
+    "Indiana": "IN",
+    "Iowa": "IA",
+    "Kansas": "KS",
+    "Kentucky": "KY",
+    "Louisiana": "LA",
+    "Maine": "ME",
+    "Maryland": "MD",
+    "Massachusetts": "MA",
+    "Michigan": "MI",
+    "Minnesota": "MN",
+    "Mississippi": "MS",
+    "Missouri": "MO",
+    "Montana": "MT",
+    "Nebraska": "NE",
+    "Nevada": "NV",
+    "New Hampshire": "NH",
+    "New Jersey": "NJ",
+    "New Mexico": "NM",
+    "New York": "NY",
+    "North Carolina": "NC",
+    "North Dakota": "ND",
+    "Ohio": "OH",
+    "Oklahoma": "OK",
+    "Oregon": "OR",
+    "Pennsylvania": "PA",
+    "Rhode Island": "RI",
+    "South Carolina": "SC",
+    "South Dakota": "SD",
+    "Tennessee": "TN",
+    "Texas": "TX",
+    "Utah": "UT",
+    "Vermont": "VT",
+    "Virginia": "VA",
+    "Washington": "WA",
+    "West Virginia": "WV",
+    "Wisconsin": "WI",
+    "Wyoming": "WY",
+    "District Of Columbia": "DC",
+    "District of Columbia": "DC",
+    "American Samoa": "AS",
+    "Guam": "GU",
+    "Northern Mariana Islands": "MP",
+    "Puerto Rico": "PR",
+    "United States Minor Outlying Islands": "UM",
+    "Virgin Islands": "VI",
+    "Federated States Of Micronesia": "UM",
+    "Palau": "UM",
+    "Marshall Islands": "UM"
+}
+
 def main():
     #st.markdown('<style>div.block-container{padding-top:1rem;}</style>', unsafe_allow_html=True)
 
@@ -93,17 +157,20 @@ def main():
         select_col_3 = st.sidebar.selectbox('Select Column #3', df.columns)
 
         col1, col2, col3 = st.columns(3)
-        col1.metric(select_col_1 +' Mean Value', np.round(df[select_col_1].mean()))
-        col2.metric(select_col_2 +' Maximum Value', df[select_col_2].max())
-        col3.metric(select_col_3 +' Minimum Value', df[select_col_3].min())
+        
+        mult_val_columns = list(filter(lambda x: df[x].nunique() < 50, df.columns))
 
         with col1:
-            category_df_xaxis = st.selectbox('Select Category', df.columns)
+            category_df_xaxis = st.selectbox('Select Category', mult_val_columns)
         with col2:
             category_df_yaxis = st.selectbox('Select Quantity Column', df.columns)
         with col3:
-            category_df_y2axis = st.selectbox('Select Region', df.columns)
+            category_df_y2axis = st.selectbox('Select Pie Chart Category', mult_val_columns)
         category_df = filtered_df.groupby(by = [category_df_xaxis], as_index = False)[category_df_yaxis].sum()
+
+        col1.metric(category_df_yaxis +' Mean Value', np.round(filtered_df[category_df_yaxis].mean()))
+        col2.metric(category_df_yaxis +' Maximum Value', filtered_df[category_df_yaxis].max())
+        col3.metric(category_df_yaxis +' Minimum Value', filtered_df[category_df_yaxis].min())
 
         cl1, cl2 = st.columns(2)
         with cl1:
@@ -118,12 +185,43 @@ def main():
             fig.update_traces(text = filtered_df[category_df_y2axis], textposition = "outside")
             st.plotly_chart(fig,use_container_width=True)
 
+        state_col = []
+        kkf = df.columns.tolist()
+        for state in kkf:
+            if 'state' in state:
+                state_col.append(state)
+            elif 'State' in state:
+                state_col.append(state)
+            elif 'STATE' in state:
+                state_col.append(state)
+            else:
+                pass
+        if len(state_col) == 1:
+            df_states = filtered_df[state_col[0]]
+            counts = df_states.value_counts()
+            unique_values = counts.index
+            unique_values = pd.DataFrame(unique_values)
+            unique_values["State_abb"] = [states_abbreviation[x] for x in unique_values[state_col[0]]]
+            choropleth = px.choropleth(locations=unique_values['State_abb'], 
+                            locationmode="USA-states", 
+                            color=counts, 
+                            scope="usa",
+                            labels={'locations':'State','color':'Counts'},
+                            color_continuous_scale=px.colors.sequential.YlOrRd
+                            )
+            choropleth.update_layout(
+                template = 'plotly_dark',
+                margin = dict(l=10, r=10, t=0, b=0),
+                width = 800,
+                height = 600
+                )
+            st.write("<h1 style='text_align: center;'>Choropleth Map Presenting Counts per State</h1>", unsafe_allow_html=True)
+            st.plotly_chart(choropleth, use_container_width = True)
         st.markdown("Column #1 Counts Bar Chart")
         st.bar_chart(df[select_col_1].value_counts())
 
         st.markdown("Column #2 Line Chart")
         st.line_chart(df[select_col_2])
-
 if __name__ == '__main__':
     main()
 
